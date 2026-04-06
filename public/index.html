@@ -36,27 +36,15 @@ body { font-family:'Noto Sans TC',sans-serif; background:var(--bg); color:var(--
 .field-input { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius); font-family:'Noto Sans TC',sans-serif; font-size:13px; color:var(--ink); background:var(--bg); outline:none; transition:border-color 0.15s; appearance:none; }
 .field-input:focus { border-color:var(--accent); background:#fff; }
 
-/* PlaceAutocompleteElement 樣式覆蓋 */
-#place-autocomplete-wrap {
-  position: relative;
-}
-gmp-place-autocomplete {
-  width: 100%;
-  --gmp-mat-color-on-surface: var(--ink);
-  --gmp-mat-color-surface: var(--bg);
-}
-gmp-place-autocomplete::part(input) {
-  width: 100%;
-  padding: 10px 12px;
+/* gmp-place-autocomplete 外框 */
+#autocomplete-container {
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 13px;
-  color: var(--ink);
-  background: var(--bg);
-  outline: none;
-  box-sizing: border-box;
+  overflow: hidden;
+  transition: border-color 0.15s;
 }
+#autocomplete-container:focus-within { border-color: var(--accent); }
+gmp-place-autocomplete { width: 100%; display: block; }
 
 #transport-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 .transport-btn { padding:9px 8px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); cursor:pointer; display:flex; align-items:center; gap:7px; font-family:'Noto Sans TC',sans-serif; font-size:12px; font-weight:500; color:var(--ink2); transition:all 0.15s; user-select:none; }
@@ -92,17 +80,13 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
 
 #map-wrap { flex:1; position:relative; height:100vh; }
 #map { width:100%; height:100%; }
-
 #map-legend { position:absolute; bottom:28px; right:12px; z-index:100; background:rgba(255,255,255,0.97); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; font-size:11px; color:var(--ink2); box-shadow:0 4px 16px rgba(0,0,0,0.08); min-width:170px; display:none; }
 #map-legend h4 { font-size:9px; font-family:'DM Mono',monospace; color:var(--ink3); margin-bottom:8px; letter-spacing:0.08em; }
 .ml-row { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
 .ml-swatch { width:22px; height:7px; border-radius:3px; flex-shrink:0; }
 
 #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:9px 18px; border-radius:20px; font-size:12px; font-family:'DM Mono',monospace; z-index:9999; opacity:0; transition:opacity 0.3s; pointer-events:none; white-space:nowrap; }
-
 #sec-badge { display:flex; align-items:center; gap:6px; padding:8px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; font-size:11px; color:#166534; }
-
-/* 目的地 marker pin 樣式 */
 .dest-pin { width:28px; height:28px; background:#1a1a1a; border-radius:50% 50% 50% 4px; transform:rotate(-45deg); border:3px solid #fff; box-shadow:0 2px 10px rgba(0,0,0,0.3); cursor:pointer; }
 
 @media (max-width:700px) {
@@ -110,7 +94,6 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
   #panel { width:100%; height:auto; max-height:58vh; border-right:none; border-bottom:1px solid var(--border); }
   #map-wrap { height:42vh; }
 }
-
 .iw { font-family:'Noto Sans TC',sans-serif; min-width:160px; }
 .iw .pname { font-weight:700; font-size:13px; color:var(--ink); margin-bottom:2px; }
 .iw .pdesc { font-size:11px; color:var(--ink2); line-height:1.6; }
@@ -123,21 +106,21 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
     <h1>🗺 通勤圈查詢</h1>
     <p>Commute Isochrone Explorer</p>
   </div>
-
   <div id="panel-body">
-
     <div id="sec-badge">🔒 API Key 由後端代理保護</div>
 
-    <!-- 目的地：新版 PlaceAutocompleteElement -->
     <div class="field-group">
       <div class="field-label">📍 目的地</div>
-      <div id="place-autocomplete-wrap">
-        <!-- 動態建立 gmp-place-autocomplete -->
+      <div id="autocomplete-container">
+        <!-- 注意：只傳 placeholder，不傳 language（不支援）-->
+        <gmp-place-autocomplete
+          id="place-ac"
+          placeholder="輸入地址或地點名稱...">
+        </gmp-place-autocomplete>
       </div>
       <div style="font-size:11px;color:var(--ink3);margin-top:2px">或直接點擊地圖上任一點</div>
     </div>
 
-    <!-- 交通方式 -->
     <div class="field-group">
       <div class="field-label">🚀 交通方式（可複選）</div>
       <div id="transport-grid">
@@ -148,7 +131,6 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
       </div>
     </div>
 
-    <!-- 通勤時間 -->
     <div class="field-group">
       <div class="field-label">⏱ 通勤時間上限</div>
       <div class="time-row">
@@ -160,7 +142,6 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
         oninput="document.getElementById('time-display').textContent=this.value+' 分鐘'"/>
     </div>
 
-    <!-- 時間設定 -->
     <div class="field-group">
       <div class="field-label">🕐 時間設定</div>
       <select class="field-input" id="time-direction" style="margin-bottom:6px">
@@ -177,7 +158,6 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
       <div class="btn-spinner" id="btn-spinner"></div>
       <span id="btn-text">計算通勤圈</span>
     </button>
-
   </div>
 
   <div id="results">
@@ -193,12 +173,9 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
     <div id="legend-body"></div>
   </div>
 </div>
-
 <div id="toast"></div>
 
 <script>
-const GMAPS_KEY = 'AIzaSyCJ3rAWqeEEJJOf_HmmtMg8G9hAJfZLx58';
-
 let map, infoWindow, AdvancedMarkerElement;
 let destMarker = null;
 let destLatLng = null;
@@ -224,114 +201,85 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function toggleTransport(btn) {
   const mode = btn.dataset.mode;
-  if (activeMode.has(mode)) {
-    activeMode.delete(mode);
-    btn.classList.remove(ACTIVE_CLASS[mode]);
-  } else {
-    activeMode.add(mode);
-    btn.classList.add(ACTIVE_CLASS[mode]);
+  if (activeMode.has(mode)) { activeMode.delete(mode); btn.classList.remove(ACTIVE_CLASS[mode]); }
+  else { activeMode.add(mode); btn.classList.add(ACTIVE_CLASS[mode]); }
+}
+
+async function initMap() {
+  try {
+    const { Map, InfoWindow }           = await google.maps.importLibrary('maps');
+    const { AdvancedMarkerElement: AME }= await google.maps.importLibrary('marker');
+    AdvancedMarkerElement = AME;
+
+    // 地圖
+    map = new Map(document.getElementById('map'), {
+      center: { lat:25.033, lng:121.565 }, zoom:12, mapId:'DEMO_MAP_ID',
+      mapTypeControl:true,
+      mapTypeControlOptions:{
+        style:google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+        mapTypeIds:['roadmap','satellite','terrain','hybrid'],
+      },
+      streetViewControl:true, fullscreenControl:true,
+    });
+    infoWindow = new InfoWindow();
+
+    // PlaceAutocompleteElement — 用 importLibrary 取得後設定 countryRestriction
+    await google.maps.importLibrary('places');
+    const acEl = document.getElementById('place-ac');
+
+    // 用 JS 屬性設定限制，不用 HTML 屬性
+    acEl.componentRestrictions = { country: 'tw' };
+
+    acEl.addEventListener('gmp-placeselect', async (e) => {
+      try {
+        const place = e.place;
+        await place.fetchFields({ fields:['location','displayName','formattedAddress'] });
+        destLatLng = { lat: place.location.lat(), lng: place.location.lng() };
+        destName   = place.displayName || place.formattedAddress || '選取地點';
+        placeDestMarker(destLatLng, destName);
+        map.setCenter(destLatLng);
+        map.setZoom(13);
+      } catch(err) {
+        console.error('place fetch error:', err);
+        showToast('⚠️ 無法取得地點資訊');
+      }
+    });
+
+    // 點擊地圖
+    map.addListener('click', (e) => {
+      destLatLng = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+      destName   = `${destLatLng.lat.toFixed(5)}, ${destLatLng.lng.toFixed(5)}`;
+      placeDestMarker(destLatLng, destName);
+      showToast('📍 已設定目的地');
+    });
+
+    showToast('搜尋地點或點擊地圖設定目的地');
+
+  } catch(err) {
+    console.error('initMap error:', err);
+    document.getElementById('map').innerHTML =
+      `<div style="padding:20px;color:red">地圖載入失敗：${err.message}</div>`;
   }
 }
 
-// ── Google Maps 初始化 ──
-async function initMap() {
-  const { Map, InfoWindow } = await google.maps.importLibrary('maps');
-  const { AdvancedMarkerElement: AME } = await google.maps.importLibrary('marker');
-  AdvancedMarkerElement = AME;
-
-  // ── 新版 PlaceAutocompleteElement ──
-  const { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
-  const autocompleteEl = new PlaceAutocompleteElement({
-    componentRestrictions: { country: 'tw' },
-    language: 'zh-TW',
-  });
-  autocompleteEl.style.width = '100%';
-  document.getElementById('place-autocomplete-wrap').appendChild(autocompleteEl);
-
-  // 監聽選取事件
-  autocompleteEl.addEventListener('gmp-placeselect', async (e) => {
-    const place = e.place;
-    await place.fetchFields({ fields: ['location','displayName','formattedAddress'] });
-    const loc = place.location;
-    destLatLng = { lat: loc.lat(), lng: loc.lng() };
-    destName   = place.displayName || place.formattedAddress || '';
-    placeDestMarker(destLatLng, destName);
-    map.setCenter(destLatLng);
-    map.setZoom(13);
-  });
-
-  map = new Map(document.getElementById('map'), {
-    center: { lat:25.033, lng:121.565 },
-    zoom: 12,
-    mapId: 'DEMO_MAP_ID',
-    mapTypeControl: true,
-    mapTypeControlOptions: {
-      style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
-      mapTypeIds: ['roadmap','satellite','terrain','hybrid'],
-    },
-    streetViewControl: true,
-    fullscreenControl: true,
-  });
-
-  infoWindow = new InfoWindow();
-
-  // ── 點擊地圖設定目的地（用 Places API reverse geocode）──
-  map.addListener('click', async (e) => {
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
-    destLatLng = { lat, lng };
-
-    // 用 Places API 反向查地址（不需要 Geocoding API）
-    try {
-      const { Place } = await google.maps.importLibrary('places');
-      const req = {
-        location: e.latLng,
-        rankPreference: google.maps.places.SearchNearbyRankPreference.DISTANCE,
-        includedTypes: ['establishment','point_of_interest'],
-        maxResultCount: 1,
-        fields: ['displayName','formattedAddress'],
-      };
-      const { places } = await Place.searchNearby(req);
-      destName = (places && places.length > 0)
-        ? (places[0].displayName || places[0].formattedAddress)
-        : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    } catch {
-      destName = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    }
-
-    placeDestMarker(destLatLng, destName);
-    showToast(`📍 目的地：${destName}`);
-  });
-
-  showToast('點擊地圖或搜尋地點，設定目的地');
-}
-
-// ── 放置目的地 marker ──
 function placeDestMarker(latlng, label) {
   if (destMarker) destMarker.map = null;
   const el = document.createElement('div');
   el.className = 'dest-pin';
-  destMarker = new AdvancedMarkerElement({
-    position: latlng, map, content: el, zIndex: 999, title: label,
-  });
-  // 修正：使用 gmp-click 而非 click
+  destMarker = new AdvancedMarkerElement({ position:latlng, map, content:el, zIndex:999, title:label });
   destMarker.addEventListener('gmp-click', () => {
     infoWindow.setContent(`<div class="iw"><div class="pname">📍 目的地</div><div class="pdesc">${label}</div></div>`);
     infoWindow.open(map, destMarker);
   });
 }
 
-// ── 計算通勤圈 ──
 async function runSearch() {
   if (!destLatLng) { showToast('⚠️ 請先設定目的地'); return; }
   if (activeMode.size === 0) { showToast('⚠️ 請至少選擇一種交通方式'); return; }
 
   const minutes   = parseInt(document.getElementById('time-slider').value);
   const direction = document.getElementById('time-direction').value;
-  const dateVal   = document.getElementById('date-input').value;
-  const timeVal   = document.getElementById('time-input').value;
-  const isoTime   = `${dateVal}T${timeVal}:00+08:00`;
-  const travelSec = minutes * 60;
+  const isoTime   = `${document.getElementById('date-input').value}T${document.getElementById('time-input').value}:00+08:00`;
   const modes     = [...activeMode];
 
   setBtnLoading(true);
@@ -340,12 +288,11 @@ async function runSearch() {
   document.getElementById('map-legend').style.display = 'none';
 
   const searches = modes.map(mode => {
-    const cfg = MODE_CONFIG[mode];
     const s = {
       id: mode,
-      coords: { lat: destLatLng.lat, lng: destLatLng.lng },
-      transportation: { type: cfg.tt },
-      travel_time: travelSec,
+      coords: { lat:destLatLng.lat, lng:destLatLng.lng },
+      transportation: { type: MODE_CONFIG[mode].tt },
+      travel_time: minutes * 60,
     };
     if (direction === 'arrival') s.arrival_time = isoTime;
     else s.departure_time = isoTime;
@@ -358,25 +305,16 @@ async function runSearch() {
 
   try {
     showToast('⏳ 計算中，請稍候...');
-
-    // ✅ 呼叫後端 Netlify Function，不直接呼叫 TravelTime
     const res = await fetch('/api/isochrone', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      console.warn('API error:', res.status, txt);
-      showToast(`❌ 錯誤 ${res.status}，請稍後再試`);
-      setBtnLoading(false);
-      return;
-    }
+    if (!res.ok) { showToast(`❌ 錯誤 ${res.status}`); setBtnLoading(false); return; }
 
     const data = await res.json();
-    const resultsHtml = [];
-    const legendHtml  = [];
+    const rHtml = [], lHtml = [];
     let zIdx = modes.length;
 
     data.results.forEach((r, i) => {
@@ -385,27 +323,24 @@ async function runSearch() {
       if (!cfg) return;
       layerVisible[mode] = true;
       drawShapes(r.shapes, mode, cfg, zIdx--);
-
-      resultsHtml.push(`
+      rHtml.push(`
         <div class="result-row" style="background:${cfg.fill}18">
           <div class="result-dot" style="background:${cfg.color}"></div>
           <div class="result-label">${cfg.icon} ${cfg.label}</div>
           <div class="result-area">${minutes} min</div>
-          <button class="result-toggle" style="border-color:${cfg.color};color:${cfg.color}"
-            onclick="toggleLayer('${mode}',this)">隱藏</button>
+          <button class="result-toggle" style="border-color:${cfg.color};color:${cfg.color}" onclick="toggleLayer('${mode}',this)">隱藏</button>
         </div>`);
-      legendHtml.push(`
+      lHtml.push(`
         <div class="ml-row">
           <div class="ml-swatch" style="background:${cfg.fill};opacity:0.7;border:1.5px solid ${cfg.color}"></div>
           <span>${cfg.icon} ${cfg.label} ≤${minutes}min</span>
         </div>`);
     });
 
-    document.getElementById('results-body').innerHTML = resultsHtml.join('');
+    document.getElementById('results-body').innerHTML = rHtml.join('');
     document.getElementById('results').style.display = 'block';
-    document.getElementById('legend-body').innerHTML = legendHtml.join('');
+    document.getElementById('legend-body').innerHTML = lHtml.join('');
     document.getElementById('map-legend').style.display = 'block';
-
     fitMapToPolygons();
     showToast('✅ 計算完成！');
 
@@ -413,59 +348,48 @@ async function runSearch() {
     console.error(e);
     showToast('❌ 連線失敗，請檢查網路');
   }
-
   setBtnLoading(false);
 }
 
 function drawShapes(shapes, mode, cfg, zIdx) {
-  if (!shapes || shapes.length === 0) return;
-  const polys = [];
-  shapes.forEach(shape => {
-    const shell = shape.shell.map(p => ({ lat:p.lat, lng:p.lng }));
-    const holes = (shape.holes||[]).map(h => h.map(p => ({ lat:p.lat, lng:p.lng })));
-    polys.push(new google.maps.Polygon({
-      paths: [shell, ...holes], map,
-      strokeColor:cfg.color, strokeOpacity:0.9, strokeWeight:2,
-      fillColor:cfg.fill, fillOpacity:0.2, zIndex:zIdx,
-    }));
-  });
+  if (!shapes || !shapes.length) return;
+  const polys = shapes.map(shape => new google.maps.Polygon({
+    paths: [shape.shell.map(p=>({lat:p.lat,lng:p.lng})), ...(shape.holes||[]).map(h=>h.map(p=>({lat:p.lat,lng:p.lng})))],
+    map, strokeColor:cfg.color, strokeOpacity:0.9, strokeWeight:2,
+    fillColor:cfg.fill, fillOpacity:0.2, zIndex:zIdx,
+  }));
   allPolygons.push({ mode, polys });
 }
 
 function toggleLayer(mode, btn) {
   layerVisible[mode] = !layerVisible[mode];
   btn.textContent = layerVisible[mode] ? '隱藏' : '顯示';
-  allPolygons.filter(g => g.mode === mode).forEach(g =>
-    g.polys.forEach(p => p.setMap(layerVisible[mode] ? map : null))
-  );
+  allPolygons.filter(g=>g.mode===mode).forEach(g=>g.polys.forEach(p=>p.setMap(layerVisible[mode]?map:null)));
 }
 
 function clearPolygons() {
-  allPolygons.forEach(g => g.polys.forEach(p => p.setMap(null)));
+  allPolygons.forEach(g=>g.polys.forEach(p=>p.setMap(null)));
   allPolygons.length = 0;
 }
 
 function fitMapToPolygons() {
   const bounds = new google.maps.LatLngBounds();
-  allPolygons.forEach(g => g.polys.forEach(poly => {
-    if (poly.getPath) poly.getPath().forEach(pt => bounds.extend(pt));
-  }));
-  if (!bounds.isEmpty()) map.fitBounds(bounds, { top:60, right:60, bottom:60, left:60 });
+  allPolygons.forEach(g=>g.polys.forEach(poly=>{ if(poly.getPath) poly.getPath().forEach(pt=>bounds.extend(pt)); }));
+  if (!bounds.isEmpty()) map.fitBounds(bounds, {top:60,right:60,bottom:60,left:60});
 }
 
 function setBtnLoading(loading) {
   document.getElementById('search-btn').disabled = loading;
-  document.getElementById('btn-spinner').style.display = loading ? 'block' : 'none';
-  document.getElementById('btn-text').textContent = loading ? '計算中...' : '計算通勤圈';
+  document.getElementById('btn-spinner').style.display = loading?'block':'none';
+  document.getElementById('btn-text').textContent = loading?'計算中...':'計算通勤圈';
 }
 
 let toastTimer;
 function showToast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.opacity = '1';
+  el.textContent = msg; el.style.opacity = '1';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 3500);
+  toastTimer = setTimeout(()=>{ el.style.opacity='0'; }, 3500);
 }
 </script>
 
