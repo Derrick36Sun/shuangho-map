@@ -320,10 +320,11 @@ async function runSearch() {
     const rHtml = [], lHtml = [];
     let zIdx = modes.length;
 
-    data.results.forEach((r, i) => {
-      const mode = modes[i];
+    data.results.forEach((r) => {
+      // ── 用 search_id 精確對應，不依賴 index 順序 ──
+      const mode = r.search_id || r.id;
       const cfg  = MODE_CONFIG[mode];
-      if (!cfg) return;
+      if (!cfg) { console.warn('unknown mode in result:', mode, r); return; }
       layerVisible[mode] = true;
       drawShapes(r.shapes, mode, cfg, zIdx--);
       rHtml.push(`
