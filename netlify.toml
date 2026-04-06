@@ -1,0 +1,15 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# 把 /api/* 的請求導向 Netlify Functions
+[[redirects]]
+  from = "/api/isochrone"
+  to = "/.netlify/functions/isochrone"
+  status = 200
+
+# SPA fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
