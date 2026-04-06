@@ -27,7 +27,7 @@ body { font-family:'Noto Sans TC',sans-serif; background:var(--bg); color:var(--
 
 #panel { width:var(--panel-w); height:100vh; background:var(--white); border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:10; flex-shrink:0; overflow-y:auto; }
 #panel-header { padding:20px 20px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
-#panel-header h1 { font-size:18px; font-weight:900; letter-spacing:-0.03em; color:var(--ink); margin-bottom:3px; }
+#panel-header h1 { font-size:18px; font-weight:900; letter-spacing:-0.03em; margin-bottom:3px; }
 #panel-header p { font-size:11px; color:var(--ink3); font-family:'DM Mono',monospace; }
 #panel-body { padding:16px 20px; display:flex; flex-direction:column; gap:18px; flex:1; }
 
@@ -36,15 +36,21 @@ body { font-family:'Noto Sans TC',sans-serif; background:var(--bg); color:var(--
 .field-input { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius); font-family:'Noto Sans TC',sans-serif; font-size:13px; color:var(--ink); background:var(--bg); outline:none; transition:border-color 0.15s; appearance:none; }
 .field-input:focus { border-color:var(--accent); background:#fff; }
 
-/* gmp-place-autocomplete 外框 */
-#autocomplete-container {
+/* 搜尋框樣式 */
+#dest-input {
+  width: 100%;
+  padding: 10px 12px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--bg);
+  outline: none;
   transition: border-color 0.15s;
 }
-#autocomplete-container:focus-within { border-color: var(--accent); }
-gmp-place-autocomplete { width: 100%; display: block; }
+#dest-input:focus { border-color: var(--accent); background: #fff; }
+.pac-container { z-index: 99999 !important; font-family: 'Noto Sans TC', sans-serif; border-radius: 8px; }
 
 #transport-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 .transport-btn { padding:9px 8px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); cursor:pointer; display:flex; align-items:center; gap:7px; font-family:'Noto Sans TC',sans-serif; font-size:12px; font-weight:500; color:var(--ink2); transition:all 0.15s; user-select:none; }
@@ -81,7 +87,7 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
 #map-wrap { flex:1; position:relative; height:100vh; }
 #map { width:100%; height:100%; }
 #map-legend { position:absolute; bottom:28px; right:12px; z-index:100; background:rgba(255,255,255,0.97); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; font-size:11px; color:var(--ink2); box-shadow:0 4px 16px rgba(0,0,0,0.08); min-width:170px; display:none; }
-#map-legend h4 { font-size:9px; font-family:'DM Mono',monospace; color:var(--ink3); margin-bottom:8px; letter-spacing:0.08em; }
+#map-legend h4 { font-size:9px; font-family:'DM Mono',monospace; color:var(--ink3); margin-bottom:8px; }
 .ml-row { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
 .ml-swatch { width:22px; height:7px; border-radius:3px; flex-shrink:0; }
 
@@ -111,13 +117,8 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
 
     <div class="field-group">
       <div class="field-label">📍 目的地</div>
-      <div id="autocomplete-container">
-        <!-- 注意：只傳 placeholder，不傳 language（不支援）-->
-        <gmp-place-autocomplete
-          id="place-ac"
-          placeholder="輸入地址或地點名稱...">
-        </gmp-place-autocomplete>
-      </div>
+      <!-- 回歸使用傳統 input + Autocomplete，最穩定 -->
+      <input id="dest-input" type="text" placeholder="輸入地址或地點名稱..."/>
       <div style="font-size:11px;color:var(--ink3);margin-top:2px">或直接點擊地圖上任一點</div>
     </div>
 
@@ -176,7 +177,7 @@ input[type=range] { width:100%; height:4px; accent-color:var(--accent); border-r
 <div id="toast"></div>
 
 <script>
-let map, infoWindow, AdvancedMarkerElement;
+let map, infoWindow, AdvancedMarkerElement, autocomplete;
 let destMarker = null;
 let destLatLng = null;
 let destName   = '';
@@ -207,8 +208,10 @@ function toggleTransport(btn) {
 
 async function initMap() {
   try {
-    const { Map, InfoWindow }           = await google.maps.importLibrary('maps');
-    const { AdvancedMarkerElement: AME }= await google.maps.importLibrary('marker');
+    const { Map, InfoWindow }            = await google.maps.importLibrary('maps');
+    const { AdvancedMarkerElement: AME } = await google.maps.importLibrary('marker');
+    // 使用舊版 Autocomplete — 雖有 deprecation warning 但功能完全正常，至少 12 個月不會移除
+    const { Autocomplete }               = await google.maps.importLibrary('places');
     AdvancedMarkerElement = AME;
 
     // 地圖
@@ -223,32 +226,26 @@ async function initMap() {
     });
     infoWindow = new InfoWindow();
 
-    // PlaceAutocompleteElement — 用 importLibrary 取得後設定 countryRestriction
-    await google.maps.importLibrary('places');
-    const acEl = document.getElementById('place-ac');
-
-    // 用 JS 屬性設定限制，不用 HTML 屬性
-    acEl.componentRestrictions = { country: 'tw' };
-
-    acEl.addEventListener('gmp-placeselect', async (e) => {
-      try {
-        const place = e.place;
-        await place.fetchFields({ fields:['location','displayName','formattedAddress'] });
-        destLatLng = { lat: place.location.lat(), lng: place.location.lng() };
-        destName   = place.displayName || place.formattedAddress || '選取地點';
-        placeDestMarker(destLatLng, destName);
-        map.setCenter(destLatLng);
-        map.setZoom(13);
-      } catch(err) {
-        console.error('place fetch error:', err);
-        showToast('⚠️ 無法取得地點資訊');
-      }
+    // Autocomplete（舊版，但穩定可用）
+    autocomplete = new Autocomplete(document.getElementById('dest-input'), {
+      componentRestrictions: { country: 'tw' },
+      fields: ['geometry', 'name', 'formatted_address'],
+    });
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (!place.geometry) { showToast('⚠️ 找不到該地點'); return; }
+      destLatLng = { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() };
+      destName   = place.name || place.formatted_address || '選取地點';
+      placeDestMarker(destLatLng, destName);
+      map.setCenter(destLatLng);
+      map.setZoom(13);
     });
 
     // 點擊地圖
     map.addListener('click', (e) => {
       destLatLng = { lat: e.latLng.lat(), lng: e.latLng.lng() };
       destName   = `${destLatLng.lat.toFixed(5)}, ${destLatLng.lng.toFixed(5)}`;
+      document.getElementById('dest-input').value = destName;
       placeDestMarker(destLatLng, destName);
       showToast('📍 已設定目的地');
     });
@@ -258,7 +255,7 @@ async function initMap() {
   } catch(err) {
     console.error('initMap error:', err);
     document.getElementById('map').innerHTML =
-      `<div style="padding:20px;color:red">地圖載入失敗：${err.message}</div>`;
+      `<div style="padding:20px;color:red;font-size:13px">❌ 地圖載入失敗：${err.message}</div>`;
   }
 }
 
@@ -311,7 +308,13 @@ async function runSearch() {
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) { showToast(`❌ 錯誤 ${res.status}`); setBtnLoading(false); return; }
+    if (!res.ok) {
+      const txt = await res.text();
+      console.warn('API error:', res.status, txt);
+      showToast(`❌ 錯誤 ${res.status}`);
+      setBtnLoading(false);
+      return;
+    }
 
     const data = await res.json();
     const rHtml = [], lHtml = [];
@@ -328,7 +331,8 @@ async function runSearch() {
           <div class="result-dot" style="background:${cfg.color}"></div>
           <div class="result-label">${cfg.icon} ${cfg.label}</div>
           <div class="result-area">${minutes} min</div>
-          <button class="result-toggle" style="border-color:${cfg.color};color:${cfg.color}" onclick="toggleLayer('${mode}',this)">隱藏</button>
+          <button class="result-toggle" style="border-color:${cfg.color};color:${cfg.color}"
+            onclick="toggleLayer('${mode}',this)">隱藏</button>
         </div>`);
       lHtml.push(`
         <div class="ml-row">
@@ -354,7 +358,10 @@ async function runSearch() {
 function drawShapes(shapes, mode, cfg, zIdx) {
   if (!shapes || !shapes.length) return;
   const polys = shapes.map(shape => new google.maps.Polygon({
-    paths: [shape.shell.map(p=>({lat:p.lat,lng:p.lng})), ...(shape.holes||[]).map(h=>h.map(p=>({lat:p.lat,lng:p.lng})))],
+    paths: [
+      shape.shell.map(p=>({lat:p.lat,lng:p.lng})),
+      ...(shape.holes||[]).map(h=>h.map(p=>({lat:p.lat,lng:p.lng})))
+    ],
     map, strokeColor:cfg.color, strokeOpacity:0.9, strokeWeight:2,
     fillColor:cfg.fill, fillOpacity:0.2, zIndex:zIdx,
   }));
@@ -364,7 +371,9 @@ function drawShapes(shapes, mode, cfg, zIdx) {
 function toggleLayer(mode, btn) {
   layerVisible[mode] = !layerVisible[mode];
   btn.textContent = layerVisible[mode] ? '隱藏' : '顯示';
-  allPolygons.filter(g=>g.mode===mode).forEach(g=>g.polys.forEach(p=>p.setMap(layerVisible[mode]?map:null)));
+  allPolygons.filter(g=>g.mode===mode).forEach(g=>
+    g.polys.forEach(p=>p.setMap(layerVisible[mode]?map:null))
+  );
 }
 
 function clearPolygons() {
@@ -374,8 +383,10 @@ function clearPolygons() {
 
 function fitMapToPolygons() {
   const bounds = new google.maps.LatLngBounds();
-  allPolygons.forEach(g=>g.polys.forEach(poly=>{ if(poly.getPath) poly.getPath().forEach(pt=>bounds.extend(pt)); }));
-  if (!bounds.isEmpty()) map.fitBounds(bounds, {top:60,right:60,bottom:60,left:60});
+  allPolygons.forEach(g=>g.polys.forEach(poly=>{
+    if (poly.getPath) poly.getPath().forEach(pt=>bounds.extend(pt));
+  }));
+  if (!bounds.isEmpty()) map.fitBounds(bounds,{top:60,right:60,bottom:60,left:60});
 }
 
 function setBtnLoading(loading) {
